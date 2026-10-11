@@ -1,0 +1,10 @@
+rules_version = '2';
+// All uploads go through the backend (Firebase Admin SDK bypasses these rules),
+// so clients are never allowed to write directly. Public assets are served by download-token URLs.
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
