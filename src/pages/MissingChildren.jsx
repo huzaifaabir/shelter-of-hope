@@ -1,5 +1,5 @@
 
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
@@ -67,16 +67,59 @@ const emptyForm = {
   contactInfo: "",
 };
 
+/* কার্ডে ক্লিক করলে বিস্তারিত পেজ খুলবে */
+function MissingChildCard({ c }) {
+  const navigate = useNavigate();
+
+  function openDetails() {
+    navigate(`/missing-children/${encodeURIComponent(String(c._id))}`);
+  }
+
+  function handleKeyDown(e) {
+    if (e.target !== e.currentTarget) return;
+
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      openDetails();
+    }
+  }
+
+  return (
+    <article
+      className="card cursor-pointer overflow-hidden transition-all duration-200 hover:-translate-y-1 hover:shadow-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-700"
+      role="link"
+      tabIndex={0}
+      aria-label={`${c.name}-এর বিস্তারিত দেখুন`}
+      onClick={openDetails}
+      onKeyDown={handleKeyDown}
+    >
+      <Photo src={c.image} name={c.name} cls="h-56 w-full" />
+
+      <div className="p-5">
+        <div className="flex items-start justify-between gap-2">
+          <h2 className="break-words text-lg font-bold">{c.name}</h2>
+          <StatusBadge s={c.status} />
+        </div>
+
+        <p className="mt-2 text-sm text-muted">
+          {c.age != null && `বয়স ${toBn(c.age)} বছর`}
+          {c.age != null && c.missingPlace && " · "}
+          {c.missingPlace}
+        </p>
+
+        <p className="mt-4 border-t border-line pt-3 text-center text-sm font-semibold text-brand-700">
+          বিস্তারিত দেখতে কার্ডে ক্লিক করুন →
+        </p>
+      </div>
+    </article>
+  );
+}
+
 export function MissingChildren() {
   const { user } = useAuth();
   const toast = useToast();
 
-  const {
-    data,
-    loading,
-    error,
-    reload,
-  } = useAsync(listMissingPublic, []);
+  const { data, loading, error, reload } = useAsync(listMissingPublic, []);
 
   const mine = useAsync(
     () => (user ? listMyMissing() : Promise.resolve({ items: [] })),
@@ -90,7 +133,6 @@ export function MissingChildren() {
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState("");
 
-  // Preview-এর temporary URL পরিষ্কার করা
   useEffect(() => {
     return () => {
       if (imagePreview.startsWith("blob:")) {
@@ -133,7 +175,6 @@ export function MissingChildren() {
 
   function handleImageChange(e) {
     const file = e.target.files?.[0];
-
     if (!file) return;
 
     if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
@@ -157,7 +198,6 @@ export function MissingChildren() {
     setImagePreview(editItem?.image || "");
 
     const input = document.getElementById("missing-report-image");
-
     if (input) input.value = "";
   }
 
@@ -205,11 +245,7 @@ export function MissingChildren() {
       );
 
       closeForm();
-
-      await Promise.all([
-        Promise.resolve(mine.reload()),
-        Promise.resolve(reload()),
-      ]);
+      await Promise.all([mine.reload(), reload()]);
     } catch (er) {
       toast.error(er.message || "রিপোর্ট জমা দেওয়া যায়নি।");
     } finally {
@@ -363,7 +399,6 @@ export function MissingChildren() {
               </label>
             </div>
 
-            {/* ছবি নির্বাচন এবং Preview */}
             <div className="space-y-3 rounded-xl border border-line p-4">
               <label
                 htmlFor="missing-report-image"
@@ -383,7 +418,7 @@ export function MissingChildren() {
                 onChange={handleImageChange}
               />
 
-              {imagePreview && (
+              {imagePreview ? (
                 <div className="space-y-3">
                   <img
                     src={imagePreview}
@@ -401,9 +436,7 @@ export function MissingChildren() {
                       : "নির্বাচিত ছবি পরিবর্তন করুন"}
                   </button>
                 </div>
-              )}
-
-              {!imagePreview && (
+              ) : (
                 <p className="text-sm text-muted">
                   এখনো কোনো ছবি নির্বাচন করা হয়নি।
                 </p>
@@ -416,7 +449,7 @@ export function MissingChildren() {
             </p>
 
             <div className="flex flex-wrap gap-3">
-              <button className="btn-primary" disabled={busy}>
+              <button type="submit" className="btn-primary" disabled={busy}>
                 {busy
                   ? "সংরক্ষণ হচ্ছে..."
                   : editItem
@@ -436,10 +469,9 @@ export function MissingChildren() {
           </form>
         )}
 
-        {/* ব্যবহারকারীর জমা দেওয়া রিপোর্ট */}
         {user && mine.data?.items?.length > 0 && (
           <section className="card mb-8 p-5">
-            <h2 className="text-lg">আমার জমা দেওয়া রিপোর্ট</h2>
+            <h2 className="text-lg font-bold">আমার জমা দেওয়া রিপোর্ট</h2>
 
             <div className="mt-3 divide-y divide-line">
               {mine.data.items.map((item) => (
@@ -463,9 +495,7 @@ export function MissingChildren() {
                     <div>
                       <p className="font-semibold">{item.name}</p>
                       <p className="text-sm text-muted">
-                        {item.published
-                          ? "প্রকাশিত"
-                          : "যাচাইয়ের অপেক্ষায়"}
+                        {item.published ? "প্রকাশিত" : "যাচাইয়ের অপেক্ষায়"}
                       </p>
                     </div>
                   </div>
@@ -483,42 +513,25 @@ export function MissingChildren() {
           </section>
         )}
 
-        {/* প্রকাশিত রিপোর্ট */}
-        {loading ? (
-          <Loading />
-        ) : error ? (
-          <ErrorState message={error} onRetry={reload} />
-        ) : !data?.items?.length ? (
-          <EmptyState text="বর্তমানে প্রকাশিত কোনো তথ্য নেই।" />
-        ) : (
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {data.items.map((c) => (
-              <article key={c._id} className="card overflow-hidden">
-                <Photo src={c.image} name={c.name} cls="h-56 w-full" />
+        <section>
+          <h2 className="mb-5 text-xl font-bold">
+            প্রকাশিত নিখোঁজ রিপোর্ট
+          </h2>
 
-                <div className="p-5">
-                  <div className="flex items-start justify-between gap-2">
-                    <h2 className="text-lg">{c.name}</h2>
-                    <StatusBadge s={c.status} />
-                  </div>
-
-                  <p className="mt-1 text-sm text-muted">
-                    {c.age != null && `বয়স ${toBn(c.age)} বছর`}
-                    {c.age != null && c.missingPlace && " · "}
-                    {c.missingPlace}
-                  </p>
-
-                  <Link
-                    to={`/missing-children/${c._id}`}
-                    className="btn-outline btn-sm mt-4"
-                  >
-                    বিস্তারিত দেখুন
-                  </Link>
-                </div>
-              </article>
-            ))}
-          </div>
-        )}
+          {loading ? (
+            <Loading />
+          ) : error ? (
+            <ErrorState message={error} onRetry={reload} />
+          ) : !data?.items?.length ? (
+            <EmptyState text="বর্তমানে প্রকাশিত কোনো তথ্য নেই।" />
+          ) : (
+            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+              {data.items.map((c) => (
+                <MissingChildCard key={c._id} c={c} />
+              ))}
+            </div>
+          )}
+        </section>
       </div>
     </>
   );
@@ -543,6 +556,7 @@ export function MissingChildDetails() {
           message={error || "তথ্য পাওয়া যায়নি।"}
           onRetry={reload}
         />
+
         <Link to="/missing-children" className="btn-outline mt-4">
           তালিকায় ফিরে যান
         </Link>
@@ -573,7 +587,7 @@ export function MissingChildDetails() {
 
         <div className="p-6">
           <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-2xl">{c.name}</h1>
+            <h1 className="text-2xl font-bold">{c.name}</h1>
             <StatusBadge s={c.status} />
           </div>
 
@@ -619,7 +633,7 @@ export function MissingChildDetails() {
 
           {c.details && (
             <div className="mt-4">
-              <h2 className="text-base">বিস্তারিত তথ্য</h2>
+              <h2 className="text-base font-bold">বিস্তারিত তথ্য</h2>
               <p className="mt-1 whitespace-pre-line text-muted">
                 {c.details}
               </p>
@@ -628,7 +642,7 @@ export function MissingChildDetails() {
 
           {c.contactInfo && (
             <div className="mt-5 rounded-lg bg-brand-50 p-4">
-              <h2 className="text-base">যোগাযোগের তথ্য</h2>
+              <h2 className="text-base font-bold">যোগাযোগের তথ্য</h2>
               <p className="mt-1 font-medium">{c.contactInfo}</p>
             </div>
           )}

@@ -22,7 +22,7 @@ export default function Footer() {
           </div>
         </div>
         <div>
-          <h2 className="mb-3 text-base text-white">গুরুত্বপূর্ণ লিংক</h2>
+          <h2 className="mb-3 text-base !text-white">গুরুত্বপূর্ণ লিংক</h2>
           <ul className={col}>
             <li><Link className={a} to="/donors">রক্তদাতা খুঁজুন</Link></li>
             <li><Link className={a} to="/be-a-donor">রক্তদাতা হোন</Link></li>
@@ -31,7 +31,7 @@ export default function Footer() {
           </ul>
         </div>
         <div>
-          <h2 className="mb-3 text-base text-white">সংস্থা</h2>
+          <h2 className="mb-3 text-base !text-white">সংস্থা</h2>
           <ul className={col}>
             <li><Link className={a} to="/about">আমাদের সম্পর্কে</Link></li>
             <li><Link className={a} to="/complaints">অভিযোগ জানান</Link></li>

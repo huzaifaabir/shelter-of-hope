@@ -1,3 +1,4 @@
+
 const router = require("express").Router();
 const { verifyFirebaseToken } = require("../middleware/auth");
 const { str } = require("../utils/helpers");
@@ -17,6 +18,7 @@ router.get("/", verifyFirebaseToken, (req, res) => {
     district,
     upazila,
     village,
+    customPhotoURL,
   } = req.user;
 
   res.json({
@@ -32,6 +34,7 @@ router.get("/", verifyFirebaseToken, (req, res) => {
     district: district || "",
     upazila: upazila || "",
     village: village || "",
+    customPhotoURL: customPhotoURL || "",
   });
 });
 
@@ -46,6 +49,7 @@ router.put("/", verifyFirebaseToken, async (req, res, next) => {
       "district",
       "upazila",
       "village",
+      "customPhotoURL",
     ];
 
     const limits = {
@@ -56,6 +60,7 @@ router.put("/", verifyFirebaseToken, async (req, res, next) => {
       district: 100,
       upazila: 100,
       village: 150,
+      customPhotoURL: 2048,
     };
 
     const updates = {};
@@ -66,12 +71,16 @@ router.put("/", verifyFirebaseToken, async (req, res, next) => {
       }
     }
 
-    if (Object.prototype.hasOwnProperty.call(updates, "name") && !updates.name) {
+    if (
+      Object.prototype.hasOwnProperty.call(updates, "name") &&
+      !updates.name
+    ) {
       return res.status(400).json({
         message: "অনুগ্রহ করে আপনার নাম লিখুন।",
       });
     }
 
+    // Validate blood group
     const validBloodGroups = [
       "A+",
       "A-",
@@ -92,6 +101,28 @@ router.put("/", verifyFirebaseToken, async (req, res, next) => {
       });
     }
 
+    // Validate profile photo URL
+    if (
+      Object.prototype.hasOwnProperty.call(updates, "customPhotoURL") &&
+      updates.customPhotoURL
+    ) {
+      try {
+        const photoUrl = new URL(updates.customPhotoURL);
+
+        if (
+          photoUrl.protocol !== "https:" ||
+          !photoUrl.hostname
+        ) {
+          throw new Error("Invalid photo URL");
+        }
+      } catch {
+        return res.status(400).json({
+          message: "প্রোফাইল ছবির URL সঠিক নয়।",
+        });
+      }
+    }
+
+    // Save changes to MongoDB
     Object.assign(req.user, updates);
     await req.user.save();
 
@@ -108,6 +139,7 @@ router.put("/", verifyFirebaseToken, async (req, res, next) => {
       district,
       upazila,
       village,
+      customPhotoURL,
     } = req.user;
 
     return res.json({
@@ -125,6 +157,7 @@ router.put("/", verifyFirebaseToken, async (req, res, next) => {
         district: district || "",
         upazila: upazila || "",
         village: village || "",
+        customPhotoURL: customPhotoURL || "",
       },
     });
   } catch (error) {

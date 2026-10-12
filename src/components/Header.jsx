@@ -35,6 +35,10 @@ export default function Header() {
     }
   }
 
+  function closeMobileMenu() {
+    setOpen(false);
+  }
+
   return (
     <header className="sticky top-0 z-50 border-b border-line bg-white/95 backdrop-blur">
       <div className="container-x flex h-[68px] items-center justify-between gap-4">
@@ -117,7 +121,7 @@ export default function Header() {
         </button>
       </div>
 
-      {/* Mobile navigation */}
+      {/* Mobile navigation: সব লিংক সাধারণ লিংক, কোনো dropdown নেই */}
       {open && (
         <div
           id="mobile-menu"
@@ -126,7 +130,6 @@ export default function Header() {
           <nav
             className="container-x flex flex-col py-3"
             aria-label="মোবাইল মেনু"
-            onClick={() => setOpen(false)}
           >
             {links.map(([to, label]) => (
               <NavLink
@@ -134,19 +137,20 @@ export default function Header() {
                 to={to}
                 end={to === "/"}
                 className={cls}
+                onClick={closeMobileMenu}
               >
                 {label}
               </NavLink>
             ))}
 
-            <NavLink to="/be-a-donor" className={cls}>
-              ＋ রক্তদাতা হোন
-            </NavLink>
-
             <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-line pt-3">
               {user ? (
                 <>
-                  <Link to="/profile" className="btn-outline btn-sm">
+                  <Link
+                    to="/profile"
+                    className="btn-outline btn-sm"
+                    onClick={closeMobileMenu}
+                  >
                     প্রোফাইল
                   </Link>
 
@@ -160,11 +164,19 @@ export default function Header() {
                 </>
               ) : (
                 <>
-                  <Link to="/login" className="btn-primary btn-sm">
+                  <Link
+                    to="/login"
+                    className="btn-primary btn-sm"
+                    onClick={closeMobileMenu}
+                  >
                     লগইন
                   </Link>
 
-                  <Link to="/register" className="btn-outline btn-sm">
+                  <Link
+                    to="/register"
+                    className="btn-outline btn-sm"
+                    onClick={closeMobileMenu}
+                  >
                     নতুন অ্যাকাউন্ট
                   </Link>
                 </>
@@ -173,6 +185,7 @@ export default function Header() {
               <Link
                 to="/admin/login"
                 className="ml-auto text-xs text-muted"
+                onClick={closeMobileMenu}
               >
                 অ্যাডমিন লগইন
               </Link>

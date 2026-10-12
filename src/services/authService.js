@@ -97,7 +97,7 @@ export const fetchMe = () =>
   });
 
 // Update profile information.
-// Supports both updateMe("Name") and updateMe({ name, phone, ... }).
+// Supports updateMe("Name") and updateMe({ name, phone, customPhotoURL, ... }).
 export const updateMe = (data) => {
   const input =
     typeof data === "string"
@@ -112,6 +112,7 @@ export const updateMe = (data) => {
     "district",
     "upazila",
     "village",
+    "customPhotoURL",
   ];
 
   const body = {};

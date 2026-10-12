@@ -1,6 +1,6 @@
 
 import { useCallback, useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import DeleteDonorModal from "../components/DeleteDonorModal";
 import DonorForm from "../components/DonorForm";
 import { Loading, PageHeader } from "../components/Feedback";
@@ -47,10 +47,43 @@ function DonorCard({
   onDelete,
   deleting = false,
 }) {
+  const navigate = useNavigate();
   const available = donor.availability === "available";
+  const id = donorId(donor);
+  const clickable = !mine && Boolean(id);
+
+  function openDetails() {
+    if (clickable) {
+      navigate(`/donor/${encodeURIComponent(String(id))}`);
+    }
+  }
+
+  function handleCardKeyDown(event) {
+    if (event.target !== event.currentTarget) return;
+
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      openDetails();
+    }
+  }
 
   return (
-    <article className="card overflow-hidden p-5">
+    <article
+      className={`card overflow-hidden p-5 transition-all duration-200 ${
+        clickable
+          ? "cursor-pointer hover:-translate-y-1 hover:shadow-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-700"
+          : ""
+      }`}
+      onClick={clickable ? openDetails : undefined}
+      onKeyDown={clickable ? handleCardKeyDown : undefined}
+      role={clickable ? "link" : undefined}
+      tabIndex={clickable ? 0 : undefined}
+      aria-label={
+        clickable
+          ? `${donor.name || "রক্তদাতা"}-এর বিস্তারিত দেখুন`
+          : undefined
+      }
+    >
       <div className="flex items-start gap-4">
         <div className="h-20 w-20 shrink-0 overflow-hidden rounded-full bg-pink-50">
           {donor.image ? (
@@ -101,6 +134,7 @@ function DonorCard({
             <span aria-hidden="true">📞</span>
             <a
               href={`tel:${donor.phone}`}
+              onClick={(event) => event.stopPropagation()}
               className="break-all font-medium text-brand-700 hover:underline"
             >
               {donor.phone}
@@ -126,12 +160,21 @@ function DonorCard({
         )}
       </div>
 
+      {clickable && (
+        <p className="mt-4 border-t border-line pt-3 text-center text-sm font-medium text-brand-700">
+          বিস্তারিত দেখতে ক্লিক করুন <span aria-hidden="true">→</span>
+        </p>
+      )}
+
       {mine && (
         <div className="mt-4 grid grid-cols-2 gap-3">
           <button
             type="button"
             className="btn-outline w-full"
-            onClick={onEdit}
+            onClick={(event) => {
+              event.stopPropagation();
+              onEdit?.();
+            }}
             disabled={deleting}
           >
             ✏️ তথ্য এডিট
@@ -140,7 +183,10 @@ function DonorCard({
           <button
             type="button"
             className="w-full rounded-xl border border-red-200 px-3 py-2 font-semibold text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
-            onClick={onDelete}
+            onClick={(event) => {
+              event.stopPropagation();
+              onDelete?.();
+            }}
             disabled={deleting}
           >
             🗑️ {deleting ? "মুছে ফেলা হচ্ছে..." : "তথ্য মুছুন"}
@@ -253,7 +299,6 @@ export default function Donors() {
     }
   }
 
-  // কাস্টম পপআপ থেকে নিশ্চিত করার পরেই ডিলিট হবে।
   async function handleDeleteMyDonor() {
     if (!myDonor || saving) return;
 
@@ -278,7 +323,6 @@ export default function Donors() {
       setDeleteModalOpen(false);
 
       toast.success("আপনার রক্তদাতার তথ্য মুছে ফেলা হয়েছে।");
-
       await loadData();
     } catch (error) {
       console.error("Could not delete donor:", error);
@@ -308,8 +352,10 @@ export default function Donors() {
 
     const matchesBlood =
       !bloodGroup || donor.bloodGroup === bloodGroup;
+
     const matchesDivision =
       !division || donor.division === division;
+
     const matchesDistrict =
       !district || donor.district === district;
 
@@ -336,21 +382,18 @@ export default function Donors() {
       </PageHeader>
 
       <main className="container-x section !pt-8 space-y-10">
-        {/* Section 1: নিজের রক্তদাতার তথ্য */}
         <section aria-labelledby="my-donor-heading">
-          <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h2
-                id="my-donor-heading"
-                className="text-xl font-bold text-slate-900 sm:text-2xl"
-              >
-                আপনার রক্তদাতার তথ্য
-              </h2>
+          <div className="mb-5">
+            <h2
+              id="my-donor-heading"
+              className="text-xl font-bold text-slate-900 sm:text-2xl"
+            >
+              আপনার রক্তদাতার তথ্য
+            </h2>
 
-              <p className="mt-1 text-sm text-slate-500">
-                রক্তদাতা হিসেবে নিবন্ধন করুন অথবা নিজের তথ্য আপডেট করুন।
-              </p>
-            </div>
+            <p className="mt-1 text-sm text-slate-500">
+              রক্তদাতা হিসেবে নিবন্ধন করুন অথবা নিজের তথ্য আপডেট করুন।
+            </p>
           </div>
 
           {authLoading || loading ? (
@@ -415,9 +458,7 @@ export default function Donors() {
           ) : (
             <div className="card p-6 text-center sm:p-8">
               <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-pink-50 text-brand-700">
-                <span className="text-3xl" aria-hidden="true">
-                  +
-                </span>
+                <span className="text-3xl" aria-hidden="true">+</span>
               </div>
 
               <h3 className="mt-3 text-lg font-bold">
@@ -441,9 +482,7 @@ export default function Donors() {
                     onClick={openCreateForm}
                     className="btn-primary inline-flex items-center gap-2"
                   >
-                    <span aria-hidden="true" className="text-xl">
-                      +
-                    </span>
+                    <span aria-hidden="true" className="text-xl">+</span>
                     রক্তদাতা হোন
                   </button>
                 ) : (
@@ -452,9 +491,7 @@ export default function Donors() {
                     state={{ from: "/donors" }}
                     className="btn-primary inline-flex items-center gap-2"
                   >
-                    <span aria-hidden="true" className="text-xl">
-                      +
-                    </span>
+                    <span aria-hidden="true" className="text-xl">+</span>
                     লগইন করে রক্তদাতা হোন
                   </Link>
                 )}
@@ -463,7 +500,6 @@ export default function Donors() {
           )}
         </section>
 
-        {/* Section 2: সকল রক্তদাতা */}
         <section aria-labelledby="all-donors-heading">
           <div className="mb-5">
             <h2
@@ -604,7 +640,6 @@ export default function Donors() {
         </section>
       </main>
 
-      {/* কাস্টম ডিলিট কনফার্মেশন পপআপ */}
       <DeleteDonorModal
         open={deleteModalOpen}
         loading={saving}

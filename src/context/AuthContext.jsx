@@ -1,34 +1,56 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "../firebase/auth";
 import * as svc from "../services/authService";
 
-const AuthContext = createContext(null);
-export const useAuth = () => useContext(AuthContext);
+export const AuthContext = createContext(null);
+
+// useAuth এখন এই ফাইল থেকেই export হবে
+export function useAuth() {
+  return useContext(AuthContext);
+}
 
 export function AuthProvider({ children }) {
   const [firebaseUser, setFirebaseUser] = useState(null);
-  const [profile, setProfile] = useState(null); // { role, status, name, email } — from the backend, never from the client
+  const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
   const loadProfile = useCallback(async () => {
     try {
-      setProfile(await svc.fetchMe());
-    } catch {
+      const data = await svc.fetchMe();
+      setProfile(data);
+    } catch (error) {
+      console.error("Profile loading failed:", error);
       setProfile(null);
     }
   }, []);
 
-  useEffect(
-    () =>
-      onAuthStateChanged(auth, async (u) => {
-        setFirebaseUser(u);
-        if (u) await loadProfile();
-        else setProfile(null);
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      setFirebaseUser(user);
+      setLoading(true);
+
+      try {
+        if (user) {
+          await loadProfile();
+        } else {
+          setProfile(null);
+        }
+      } finally {
         setLoading(false);
-      }),
-    [loadProfile]
-  );
+      }
+    });
+
+    return unsubscribe;
+  }, [loadProfile]);
 
   const value = useMemo(
     () => ({
@@ -36,7 +58,9 @@ export function AuthProvider({ children }) {
       profile,
       loading,
       role: profile?.role || "user",
-      isStaff: profile?.role === "editor" || profile?.role === "administrator",
+      isStaff:
+        profile?.role === "editor" ||
+        profile?.role === "administrator",
       isAdministrator: profile?.role === "administrator",
       refreshProfile: loadProfile,
       login: svc.loginWithEmail,
@@ -47,5 +71,10 @@ export function AuthProvider({ children }) {
     }),
     [firebaseUser, profile, loading, loadProfile]
   );
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+    </AuthContext.Provider>
+  );
 }

@@ -55,12 +55,21 @@ export default function Profile() {
   const [photoBusy, setPhotoBusy] = useState(false);
 
   const [photo, setPhoto] = useState("");
+  const [photoRemoved, setPhotoRemoved] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
 
   const donor = mine.data?.donor;
 
   useEffect(() => {
-    setPhoto(profile?.customPhotoURL || "");
+    // ছবি মুছে দেওয়ার পর Firebase-এর পুরোনো URL দিয়ে
+    // ছবিটি আবার দেখানো হবে না।
+    if (!photoRemoved) {
+      setPhoto(
+        profile?.customPhotoURL ||
+        user?.photoURL ||
+        ""
+      );
+    }
 
     setForm({
       name: profile?.name || user?.displayName || "",
@@ -71,7 +80,13 @@ export default function Profile() {
       upazila: profile?.upazila || donor?.upazila || "",
       village: profile?.village || donor?.village || "",
     });
-  }, [profile, user?.displayName, donor]);
+  }, [
+    profile,
+    user?.displayName,
+    user?.photoURL,
+    donor,
+    photoRemoved,
+  ]);
 
   function changeField(e) {
     const { name, value } = e.target;
@@ -120,8 +135,6 @@ export default function Profile() {
         });
       }
 
-      // Donor record থাকলে তার তথ্যও আপডেট করার চেষ্টা।
-      // Donor API ব্যর্থ হলেও account profile save ইতিমধ্যে হয়েছে।
       if (donor?.donorId) {
         try {
           await updateDonor(donor.donorId, {
@@ -143,6 +156,7 @@ export default function Profile() {
 
       toast.success("প্রোফাইল সফলভাবে সংরক্ষণ করা হয়েছে।");
     } catch (error) {
+      console.error("Profile save failed:", error);
       toast.error(
         error.message || "প্রোফাইল সংরক্ষণ করা যায়নি। আবার চেষ্টা করুন।"
       );
@@ -151,7 +165,10 @@ export default function Profile() {
     }
   }
 
+  // প্রোফাইল ছবি আপলোড, পরিবর্তন ও সরানো
   async function savePhoto(url) {
+    if (photoBusy) return;
+
     setPhotoBusy(true);
 
     try {
@@ -159,23 +176,49 @@ export default function Profile() {
         throw new Error("আপনাকে প্রথমে লগইন করতে হবে।");
       }
 
-      const uploadedPhoto = url || "";
+      const uploadedPhoto =
+        typeof url === "string" ? url.trim() : "";
 
+      // আগে থেকেই UI আপডেট করে রাখি
+      setPhoto(uploadedPhoto);
+      setPhotoRemoved(!uploadedPhoto);
+
+      // Backend profile-এ ছবির URL সংরক্ষণ বা খালি করা
+      await updateMe({
+        customPhotoURL: uploadedPhoto,
+      });
+
+      // Firebase Auth-এ ছবির URL আপডেট বা মুছে ফেলা
       await updateProfile(auth.currentUser, {
         photoURL: uploadedPhoto || null,
       });
 
+      // সর্বশেষ প্রোফাইল তথ্য রিফ্রেশ
+      await refreshProfile();
+
+      // রিফ্রেশের পরেও সরানো ছবিটি লুকানো থাকবে
       setPhoto(uploadedPhoto);
+      setPhotoRemoved(!uploadedPhoto);
 
       toast.success(
         uploadedPhoto
           ? "প্রোফাইল ছবি আপডেট হয়েছে।"
           : "প্রোফাইল ছবি সরিয়ে দেওয়া হয়েছে।"
       );
-
-      await refreshProfile();
     } catch (error) {
-      toast.error(error.message || "প্রোফাইল ছবি সংরক্ষণ করা যায়নি।");
+      console.error("Profile photo update failed:", error);
+
+      // ব্যর্থ হলে আগের ছবি আবার দেখাও
+      setPhotoRemoved(false);
+      setPhoto(
+        profile?.customPhotoURL ||
+        auth.currentUser?.photoURL ||
+        ""
+      );
+
+      toast.error(
+        error.message || "প্রোফাইল ছবি পরিবর্তন করা যায়নি।"
+      );
     } finally {
       setPhotoBusy(false);
     }
@@ -189,7 +232,9 @@ export default function Profile() {
       setEditingDonor(false);
       await mine.reload();
     } catch (error) {
-      toast.error(error.message || "রক্তদাতার তথ্য সংরক্ষণ করা যায়নি।");
+      toast.error(
+        error.message || "রক্তদাতার তথ্য সংরক্ষণ করা যায়নি।"
+      );
     }
   }
 
@@ -199,11 +244,16 @@ export default function Profile() {
     try {
       await deleteDonor(donor.donorId);
 
-      toast.success("আপনাকে রক্তদাতা তালিকা থেকে সরিয়ে দেওয়া হয়েছে।");
+      toast.success(
+        "আপনাকে রক্তদাতা তালিকা থেকে সরিয়ে দেওয়া হয়েছে।"
+      );
+
       setConfirm(false);
       await mine.reload();
     } catch (error) {
-      toast.error(error.message || "রক্তদাতার তথ্য সরানো যায়নি।");
+      toast.error(
+        error.message || "রক্তদাতার তথ্য সরানো যায়নি।"
+      );
     } finally {
       setBusy(false);
     }
@@ -249,16 +299,8 @@ export default function Profile() {
               </p>
             )}
 
-            {photo && (
-              <button
-                type="button"
-                className="mt-2 text-sm text-red-600"
-                disabled={photoBusy}
-                onClick={() => savePhoto("")}
-              >
-                ছবি সরিয়ে দিন
-              </button>
-            )}
+            {/* এখানে দ্বিতীয় কোনো Remove button রাখা হয়নি।
+                ImageUpload-এর ভেতরের একটি বাটনই ব্যবহার হবে। */}
           </div>
 
           <div className="mt-4 rounded-lg bg-slate-50 p-4 text-sm">
@@ -368,7 +410,9 @@ export default function Profile() {
                   className="btn-primary"
                   disabled={profileBusy}
                 >
-                  {profileBusy ? "সংরক্ষণ হচ্ছে..." : "পরিবর্তন সংরক্ষণ করুন"}
+                  {profileBusy
+                    ? "সংরক্ষণ হচ্ছে..."
+                    : "পরিবর্তন সংরক্ষণ করুন"}
                 </button>
 
                 <button
@@ -386,6 +430,7 @@ export default function Profile() {
                       upazila: profile?.upazila || donor?.upazila || "",
                       village: profile?.village || donor?.village || "",
                     });
+
                     setEditingProfile(false);
                   }}
                 >
@@ -398,13 +443,17 @@ export default function Profile() {
               <p>
                 <span className="text-muted">নাম:</span>
                 <br />
-                <strong>{profile?.name || user?.displayName || "—"}</strong>
+                <strong>
+                  {profile?.name || user?.displayName || "—"}
+                </strong>
               </p>
 
               <p>
                 <span className="text-muted">ফোন নম্বর:</span>
                 <br />
-                <strong>{profile?.phone || donor?.phone || "—"}</strong>
+                <strong>
+                  {profile?.phone || donor?.phone || "—"}
+                </strong>
               </p>
 
               <p>
@@ -466,7 +515,10 @@ export default function Profile() {
           {mine.loading ? (
             <Loading />
           ) : mine.error ? (
-            <ErrorState message={mine.error} onRetry={mine.reload} />
+            <ErrorState
+              message={mine.error}
+              onRetry={mine.reload}
+            />
           ) : !donor ? (
             <div className="mt-3">
               <p className="text-muted">
@@ -563,7 +615,10 @@ export default function Profile() {
           {myMissing.loading ? (
             <Loading />
           ) : myMissing.error ? (
-            <ErrorState message={myMissing.error} onRetry={myMissing.reload} />
+            <ErrorState
+              message={myMissing.error}
+              onRetry={myMissing.reload}
+            />
           ) : myMissing.data?.items?.length ? (
             <div className="mt-4 divide-y divide-line">
               {myMissing.data.items.map((item) => (
@@ -573,8 +628,11 @@ export default function Profile() {
                 >
                   <div>
                     <p className="font-semibold">{item.name}</p>
+
                     <p className="text-sm text-muted">
-                      {item.published ? "প্রকাশিত" : "যাচাইয়ের অপেক্ষায়"}
+                      {item.published
+                        ? "প্রকাশিত"
+                        : "যাচাইয়ের অপেক্ষায়"}
                       {" · "}
                       {item.missingPlace || "স্থান উল্লেখ করা হয়নি"}
                     </p>
@@ -595,7 +653,10 @@ export default function Profile() {
             </p>
           )}
 
-          <Link to="/missing-children" className="btn-outline btn-sm mt-4">
+          <Link
+            to="/missing-children"
+            className="btn-outline btn-sm mt-4"
+          >
             ＋ নিখোঁজ রিপোর্ট
           </Link>
         </section>
