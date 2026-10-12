@@ -7,7 +7,7 @@ import { useAuth } from "../context/AuthContext";
 const links = [
   ["/", "হোম"],
   ["/about", "আমাদের সম্পর্কে"],
-  ["/missing-children", "নিখোঁজ ব্যক্তির তথ্য"],
+  ["/missing", "নিখোঁজ ব্যক্তির তথ্য"],
   ["/emergency", "জরুরি সহায়তা"],
   ["/contact", "যোগাযোগ"],
   ["/donors", "রক্তদাতা"],

@@ -128,7 +128,7 @@ export default function Hero({ hero = {} }) {
         <div className="mt-8 flex flex-wrap justify-center gap-3">
           <Cta
             primary
-            to={hero.primaryLink || "/missing-children"}
+            to={hero.primaryLink || "/missing"}
           >
             {hero.primaryText || "⚠ নিখোঁজ রিপোর্ট করুন →"}
           </Cta>

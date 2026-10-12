@@ -72,7 +72,8 @@ function MissingChildCard({ c }) {
   const navigate = useNavigate();
 
   function openDetails() {
-    navigate(`/missing-children/${encodeURIComponent(String(c._id))}`);
+    if (!c?._id) return;
+    navigate(`/missing/${encodeURIComponent(String(c._id))}`);
   }
 
   function handleKeyDown(e) {
@@ -288,7 +289,7 @@ export function MissingChildren() {
           ) : (
             <Link
               to="/login"
-              state={{ from: "/missing-children" }}
+              state={{ from: "/missing" }}
               className="btn-primary"
             >
               লগইন করে রিপোর্ট দিন
@@ -557,7 +558,7 @@ export function MissingChildDetails() {
           onRetry={reload}
         />
 
-        <Link to="/missing-children" className="btn-outline mt-4">
+        <Link to="/missing" className="btn-outline mt-4">
           তালিকায় ফিরে যান
         </Link>
       </div>
@@ -572,7 +573,7 @@ export function MissingChildDetails() {
       />
 
       <Link
-        to="/missing-children"
+        to="/missing"
         className="text-sm font-semibold text-brand-700"
       >
         ← সব তথ্য

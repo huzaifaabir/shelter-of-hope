@@ -192,7 +192,7 @@ export default function Home() {
               </p>
             </div>
 
-            <Link to="/missing-children" className="btn-outline">
+            <Link to="/missing" className="btn-outline">
               সব রিপোর্ট দেখুন
             </Link>
           </div>
@@ -211,7 +211,7 @@ export default function Home() {
                   বর্তমানে প্রকাশিত কোনো রিপোর্ট নেই।
                 </p>
                 <Link
-                  to="/missing-children"
+                  to="/missing"
                   className="btn-outline mt-4 inline-flex"
                 >
                   সব রিপোর্ট দেখুন
@@ -258,14 +258,14 @@ export default function Home() {
 
                           {id ? (
                             <Link
-                              to={`/missing-children/${id}`}
+                              to={`/missing/${id}`}
                               className="btn-outline btn-sm mt-3"
                             >
                               বিস্তারিত দেখুন
                             </Link>
                           ) : (
                             <Link
-                              to="/missing-children"
+                              to="/missing"
                               className="btn-outline btn-sm mt-3"
                             >
                               সব রিপোর্ট দেখুন

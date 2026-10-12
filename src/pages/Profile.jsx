@@ -179,7 +179,6 @@ export default function Profile() {
       const uploadedPhoto =
         typeof url === "string" ? url.trim() : "";
 
-      // আগে থেকেই UI আপডেট করে রাখি
       setPhoto(uploadedPhoto);
       setPhotoRemoved(!uploadedPhoto);
 
@@ -193,10 +192,8 @@ export default function Profile() {
         photoURL: uploadedPhoto || null,
       });
 
-      // সর্বশেষ প্রোফাইল তথ্য রিফ্রেশ
       await refreshProfile();
 
-      // রিফ্রেশের পরেও সরানো ছবিটি লুকানো থাকবে
       setPhoto(uploadedPhoto);
       setPhotoRemoved(!uploadedPhoto);
 
@@ -208,7 +205,6 @@ export default function Profile() {
     } catch (error) {
       console.error("Profile photo update failed:", error);
 
-      // ব্যর্থ হলে আগের ছবি আবার দেখাও
       setPhotoRemoved(false);
       setPhoto(
         profile?.customPhotoURL ||
@@ -298,9 +294,6 @@ export default function Profile() {
                 ছবি সংরক্ষণ হচ্ছে...
               </p>
             )}
-
-            {/* এখানে দ্বিতীয় কোনো Remove button রাখা হয়নি।
-                ImageUpload-এর ভেতরের একটি বাটনই ব্যবহার হবে। */}
           </div>
 
           <div className="mt-4 rounded-lg bg-slate-50 p-4 text-sm">
@@ -639,7 +632,7 @@ export default function Profile() {
                   </div>
 
                   <Link
-                    to="/missing-children"
+                    to="/missing"
                     className="btn-outline btn-sm"
                   >
                     তালিকা দেখুন
@@ -654,7 +647,7 @@ export default function Profile() {
           )}
 
           <Link
-            to="/missing-children"
+            to="/missing"
             className="btn-outline btn-sm mt-4"
           >
             ＋ নিখোঁজ রিপোর্ট

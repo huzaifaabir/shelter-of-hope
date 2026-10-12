@@ -14,21 +14,30 @@ export class ApiError extends Error {
   }
 }
 
+// Firebase authentication token
 async function tokenHeader(required) {
   const user = auth.currentUser;
 
   if (!user) {
     if (required) {
-      throw new ApiError("এই কাজটি করার জন্য লগইন করুন।", 401);
+      throw new ApiError(
+        "এই কাজটি করার জন্য লগইন করুন।",
+        401
+      );
     }
+
     return {};
   }
 
   try {
+    const token = await user.getIdToken();
+
     return {
-      Authorization: `Bearer ${await user.getIdToken()}`,
+      Authorization: `Bearer ${token}`,
     };
-  } catch {
+  } catch (error) {
+    console.error("Firebase token error:", error);
+
     if (required) {
       throw new ApiError(
         "আপনার লগইন যাচাই করা যায়নি। আবার লগইন করুন।",
@@ -40,36 +49,58 @@ async function tokenHeader(required) {
   }
 }
 
-// JSON অথবা FormData পাঠানোর জন্য
+// API request: JSON এবং FormData সমর্থিত
 export async function api(
   path,
-  { method = "GET", body, auth: useAuth = false } = {}
+  {
+    method = "GET",
+    body,
+    auth: useAuth = false,
+  } = {}
 ) {
+  if (!path || typeof path !== "string") {
+    throw new ApiError(
+      "API path সঠিক নয়।",
+      400
+    );
+  }
+
+  const normalizedPath = path.startsWith("/")
+    ? path
+    : `/${path}`;
+
   const headers = {
     ...(await tokenHeader(useAuth)),
   };
 
   const isForm =
-    typeof FormData !== "undefined" && body instanceof FormData;
+    typeof FormData !== "undefined" &&
+    body instanceof FormData;
 
-  if (body && !isForm) {
+  if (body !== undefined && body !== null && !isForm) {
     headers["Content-Type"] = "application/json";
   }
+
+  const url = `${BASE}/api${normalizedPath}`;
 
   let res;
 
   try {
-    res = await fetch(`${BASE}/api${path}`, {
+    res = await fetch(url, {
       method,
       headers,
-      body: body
-        ? isForm
-          ? body
-          : JSON.stringify(body)
-        : undefined,
+      body:
+        body === undefined || body === null
+          ? undefined
+          : isForm
+            ? body
+            : JSON.stringify(body),
     });
   } catch (error) {
-    console.error("API connection error:", error);
+    console.error("API connection error:", {
+      url,
+      error,
+    });
 
     throw new ApiError(
       "সার্ভারের সঙ্গে সংযোগ স্থাপন করা যাচ্ছে না। Backend চালু আছে কি না এবং VITE_API_URL যাচাই করুন।",
@@ -77,37 +108,63 @@ export async function api(
     );
   }
 
-  const contentType = res.headers.get("content-type") || "";
+  const contentType =
+    res.headers.get("content-type") || "";
+
   let data = {};
 
   if (contentType.includes("application/json")) {
     data = await res.json().catch(() => ({}));
+  } else {
+    const text = await res.text().catch(() => "");
+
+    if (text) {
+      data = { message: text };
+    }
   }
 
   if (!res.ok) {
     const message =
       data.message ||
-      (res.status === 404
-        ? "API ঠিকানা পাওয়া যায়নি। VITE_API_URL এবং backend route যাচাই করুন।"
-        : `সার্ভারে সমস্যা হয়েছে (HTTP ${res.status})।`);
+      (res.status === 401
+        ? "আপনাকে আবার লগইন করতে হবে।"
+        : res.status === 403
+          ? "এই কাজটি করার অনুমতি আপনার নেই।"
+          : res.status === 404
+            ? "অনুরোধকৃত API ঠিকানা পাওয়া যায়নি। Backend route যাচাই করুন।"
+            : `সার্ভারে সমস্যা হয়েছে (HTTP ${res.status})।`);
 
-    throw new ApiError(message, res.status, data.errors);
+    console.error("API request failed:", {
+      url,
+      status: res.status,
+      data,
+    });
+
+    throw new ApiError(
+      message,
+      res.status,
+      data.errors
+    );
   }
 
   return data;
 }
 
-// params না দিলেও কাজ করবে
+// URL query parameters
 export const qs = (params = {}) => {
-  const p = new URLSearchParams();
+  const searchParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
-    if (value !== "" && value !== undefined && value !== null) {
-      p.set(key, String(value));
+    if (
+      value !== "" &&
+      value !== undefined &&
+      value !== null
+    ) {
+      searchParams.set(key, String(value));
     }
   });
 
-  const query = p.toString();
+  const query = searchParams.toString();
 
   return query ? `?${query}` : "";
 };

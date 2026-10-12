@@ -1,3 +1,4 @@
+
 const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
@@ -8,17 +9,36 @@ const connectDB = require("./config/db");
 const { notFound, errorHandler } = require("./middleware/errors");
 
 const app = express();
+
 app.set("trust proxy", 1);
 
-app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
+// Security headers
+app.use(
+  helmet({
+    crossOriginResourcePolicy: {
+      policy: "cross-origin",
+    },
+  })
+);
 
-const origins = (process.env.CLIENT_ORIGIN || "http://localhost:5173")
+// Allowed frontend origins
+const origins = (
+  process.env.CLIENT_ORIGIN || "http://localhost:5173"
+)
   .split(",")
-  .map((s) => s.trim());
+  .map((origin) => origin.trim())
+  .filter(Boolean);
 
-app.use(cors({ origin: origins }));
+app.use(
+  cors({
+    origin: origins,
+  })
+);
+
+// Request body parsing
 app.use(express.json({ limit: "200kb" }));
 
+// API rate limiting
 app.use(
   "/api",
   rateLimit({
@@ -29,58 +49,79 @@ app.use(
   })
 );
 
+// API root
 app.get("/", (req, res) => {
-  res.json({ message: "Shelter of Hope API is running" });
+  res.json({
+    ok: true,
+    message: "Shelter of Hope API is running",
+  });
 });
 
+// Health check
 app.get("/api/health", (req, res) => {
   const mongoose = require("mongoose");
 
-  const projectId = !!process.env.FIREBASE_PROJECT_ID;
-  const clientEmail = !!process.env.FIREBASE_CLIENT_EMAIL;
-  const privateKey = !!process.env.FIREBASE_PRIVATE_KEY;
-  const serviceAccountJson = !!process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
+  const projectId = Boolean(process.env.FIREBASE_PROJECT_ID);
+  const clientEmail = Boolean(process.env.FIREBASE_CLIENT_EMAIL);
+  const privateKey = Boolean(process.env.FIREBASE_PRIVATE_KEY);
+  const serviceAccountJson = Boolean(
+    process.env.FIREBASE_SERVICE_ACCOUNT_JSON
+  );
 
   const firebaseConfigured =
-    serviceAccountJson || (projectId && clientEmail && privateKey);
+    serviceAccountJson ||
+    (projectId && clientEmail && privateKey);
 
-  console.log("Firebase env check:", {
-    projectId,
-    clientEmail,
-    privateKey,
-    serviceAccountJson,
-    firebaseConfigured,
-  });
-
-  const databaseConnected = mongoose.connection.readyState === 1;
+  const databaseConnected =
+    mongoose.connection.readyState === 1;
 
   res.status(databaseConnected ? 200 : 503).json({
     ok: databaseConnected,
-    database: databaseConnected ? "connected" : "disconnected",
+    database: databaseConnected
+      ? "connected"
+      : "disconnected",
     firebaseConfigured,
   });
 });
 
+// General API routes
 app.use("/api/me", require("./routes/me"));
 app.use("/api/donors", require("./routes/donors"));
 app.use("/api/team-members", require("./routes/teamMembers"));
 app.use("/api/media", require("./routes/media"));
-app.use("/api/missing-children", require("./routes/missing"));
+
+// Missing persons API
+// Keep both prefixes compatible with existing frontend code.
+const missingRouter = require("./routes/missing");
+
+app.use("/api/missing-children", missingRouter);
+app.use("/api/missing", missingRouter);
+
+// Other API routes
 app.use("/api/reports", require("./routes/reports"));
 app.use("/api/admin", require("./routes/admin"));
 app.use("/api", require("./routes/content"));
 
+// 404 and error handling
 app.use(notFound);
 app.use(errorHandler);
 
+// Start server
 const PORT = process.env.PORT || 5000;
 
 if (require.main === module) {
-  connectDB().then(() => {
-    app.listen(PORT, () => {
-      console.log(`Server running on http://localhost:${PORT}`);
+  connectDB()
+    .then(() => {
+      app.listen(PORT, () => {
+        console.log(
+          `Server running on http://localhost:${PORT}`
+        );
+      });
+    })
+    .catch((error) => {
+      console.error("Failed to start server:", error);
+      process.exit(1);
     });
-  });
 }
 
 module.exports = app;
